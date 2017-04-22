@@ -1,0 +1,308 @@
+<div class="apidocDiv">
+<style>
+/*csslint
+*/
+.apidocDiv {
+    background: #fff;
+    font-family: Arial, Helvetica, sans-serif;
+}
+.apidocDiv a[href] {
+    color: #33f;
+    font-weight: bold;
+    text-decoration: none;
+}
+.apidocDiv a[href]:hover {
+    text-decoration: underline;
+}
+.apidocCodeCommentSpan {
+    background: #bbf;
+    color: #000;
+    display: block;
+}
+.apidocCodeKeywordSpan {
+    color: #d00;
+    font-weight: bold;
+}
+.apidocCodePre {
+    background: #eef;
+    border: 1px solid;
+    color: #777;
+    padding: 5px;
+    white-space: pre-wrap;
+}
+.apidocFooterDiv {
+    margin-top: 20px;
+    text-align: center;
+}
+.apidocModuleLi {
+    margin-top: 10px;
+}
+.apidocSectionDiv {
+    border-top: 1px solid;
+    margin-top: 20px;
+}
+.apidocSignatureSpan {
+    color: #777;
+    font-weight: bold;
+}
+</style>
+<h1>api documentation for
+    <a
+
+        href="https://github.com/horaci/node-mitm-proxy#readme"
+
+    >mitm-proxy (v0.0.1)</a>
+</h1>
+<h4>A node module to create a http and https man-in-the-middle proxy</h4>
+<div class="apidocSectionDiv"><a
+    href="#apidoc.tableOfContents"
+    id="apidoc.tableOfContents"
+><h1>table of contents</h1></a><ol>
+
+    <li class="apidocModuleLi"><a href="#apidoc.module.mitm-proxy">module mitm-proxy</a><ol>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.mitm-proxy.mitm-proxy">
+            function <span class="apidocSignatureSpan"></span>mitm-proxy
+            <span class="apidocSignatureSpan">(proxy_options, processor_class)</span>
+            </a>
+
+        </li>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.mitm-proxy.mkdirp">
+            function <span class="apidocSignatureSpan">mitm-proxy.</span>mkdirp
+            <span class="apidocSignatureSpan">(p, mode, f)</span>
+            </a>
+
+        </li>
+
+    </ol></li>
+
+    <li class="apidocModuleLi"><a href="#apidoc.module.mitm-proxy.mkdirp">module mitm-proxy.mkdirp</a><ol>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.mitm-proxy.mkdirp.mkdirp">
+            function <span class="apidocSignatureSpan">mitm-proxy.</span>mkdirp
+            <span class="apidocSignatureSpan">(p, mode, f)</span>
+            </a>
+
+        </li>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.mitm-proxy.mkdirp.mkdirP">
+            function <span class="apidocSignatureSpan">mitm-proxy.mkdirp.</span>mkdirP
+            <span class="apidocSignatureSpan">(p, mode, f)</span>
+            </a>
+
+        </li>
+
+    </ol></li>
+
+</ol></div>
+
+<div class="apidocSectionDiv">
+<h1><a href="#apidoc.module.mitm-proxy" id="apidoc.module.mitm-proxy">module mitm-proxy</a></h1>
+
+
+    <h2>
+        <a href="#apidoc.element.mitm-proxy.mitm-proxy" id="apidoc.element.mitm-proxy.mitm-proxy">
+        function <span class="apidocSignatureSpan"></span>mitm-proxy
+        <span class="apidocSignatureSpan">(proxy_options, processor_class)</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">mitm-proxy = function (proxy_options, processor_class) {
+  this.options = process_options(proxy_options);
+  this.processor_class = processor_class ? new Processor(processor_class) : null;
+
+  var that = this;
+  var https_opts = {
+    key: fs.readFileSync(this.options.key_path, &#x27;utf8&#x27;),
+    cert: fs.readFileSync(this.options.cert_path, &#x27;utf8&#x27;)
+  };
+
+  var mitm_server = https.createServer(https_opts, function (request, response) {
+    handle_request(that, request, response, &#x22;https&#x22;);
+  });
+
+  mitm_server.addListener(&#x27;error&#x27;, function() {
+    sys.log(&#x22;error on server?&#x22;)
+  })
+
+  mitm_server.listen(this.options.mitm_port);
+  if(this.options.verbose) console.log(&#x27;https man-in-the-middle proxy server&#x27;.blue + &#x27; started &#x27;.green.bold + &#x27;on port &#x27;.blue + (&#x22;&#x22;+
+this.options.mitm_port).yellow);
+
+  var server = http.createServer(function(request, response) {
+    handle_request(that, request, response, &#x22;http&#x22;);
+  });
+
+  // Handle connect request (for https)
+  server.addListener(&#x27;upgrade&#x27;, function(req, socket, upgradeHead) {
+    var proxy = net.createConnection(that.options.mitm_port, &#x27;localhost&#x27;);
+
+    proxy.on(&#x27;connect&#x27;, function() {
+      socket.write( &#x22;HTTP/1.0 200 Connection established\r\nProxy-agent: Netscape-Proxy/1.1\r\n\r\n&#x22;);
+    });
+
+    // connect pipes
+    proxy.on( &#x27;data&#x27;, function(d) { socket.write(d)   });
+    socket.on(&#x27;data&#x27;, function(d) { try { proxy.write(d) } catch(err) {}});
+
+    proxy.on( &#x27;end&#x27;,  function()  { socket.end()      });
+    socket.on(&#x27;end&#x27;,  function()  { proxy.end()       });
+
+    proxy.on( &#x27;close&#x27;,function()  { socket.end()      });
+    socket.on(&#x27;close&#x27;,function()  { proxy.end()       });
+
+    proxy.on( &#x27;error&#x27;,function()  { socket.end()      });
+    socket.on(&#x27;error&#x27;,function()  { proxy.end()       });
+  });
+
+  server.addListener(&#x27;error&#x27;, function() {
+    sys.log(&#x22;error on server?&#x22;)
+  })
+
+  server.listen(this.options.proxy_port);
+  if(this.options.verbose) console.log(&#x27;http proxy server &#x27;.blue + &#x27;started &#x27;.green.bold + &#x27;on port &#x27;.blue + (&#x22;&#x22;+this.options.proxy_port
+).yellow);
+}</pre></li>
+    <li>example usage<pre class="apidocCodePre">n/a</pre></li>
+    </ul>
+
+
+
+    <h2>
+        <a href="#apidoc.element.mitm-proxy.mkdirp" id="apidoc.element.mitm-proxy.mkdirp">
+        function <span class="apidocSignatureSpan">mitm-proxy.</span>mkdirp
+        <span class="apidocSignatureSpan">(p, mode, f)</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">function mkdirP(p, mode, f) {
+    var cb = f || function () {};
+    if (typeof mode === &#x27;string&#x27;) mode = parseInt(mode, 8);
+    p = path.resolve(p);
+
+    fs.mkdir(p, mode, function (er) {
+        if (!er) return cb();
+        switch (er.code) {
+            case &#x27;ENOENT&#x27;:
+                mkdirP(path.dirname(p), mode, function (er) {
+                    if (er) cb(er);
+                    else mkdirP(p, mode, cb);
+                });
+                break;
+            case &#x27;EEXIST&#x27;:
+                fs.stat(p, function (er2, stat) {
+                    if (er2 || !stat.isDirectory()) cb(er)
+                    else if ((stat.mode &#x26; 0777) !== mode) fs.chmod(p, mode, cb);
+                    else cb();
+                });
+                break;
+            default:
+                cb(er);
+                break;
+        }
+    });
+}</pre></li>
+    <li>example usage<pre class="apidocCodePre">n/a</pre></li>
+    </ul>
+
+
+</div>
+
+<div class="apidocSectionDiv">
+<h1><a href="#apidoc.module.mitm-proxy.mkdirp" id="apidoc.module.mitm-proxy.mkdirp">module mitm-proxy.mkdirp</a></h1>
+
+
+    <h2>
+        <a href="#apidoc.element.mitm-proxy.mkdirp.mkdirp" id="apidoc.element.mitm-proxy.mkdirp.mkdirp">
+        function <span class="apidocSignatureSpan">mitm-proxy.</span>mkdirp
+        <span class="apidocSignatureSpan">(p, mode, f)</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">function mkdirP(p, mode, f) {
+    var cb = f || function () {};
+    if (typeof mode === &#x27;string&#x27;) mode = parseInt(mode, 8);
+    p = path.resolve(p);
+
+    fs.mkdir(p, mode, function (er) {
+        if (!er) return cb();
+        switch (er.code) {
+            case &#x27;ENOENT&#x27;:
+                mkdirP(path.dirname(p), mode, function (er) {
+                    if (er) cb(er);
+                    else mkdirP(p, mode, cb);
+                });
+                break;
+            case &#x27;EEXIST&#x27;:
+                fs.stat(p, function (er2, stat) {
+                    if (er2 || !stat.isDirectory()) cb(er)
+                    else if ((stat.mode &#x26; 0777) !== mode) fs.chmod(p, mode, cb);
+                    else cb();
+                });
+                break;
+            default:
+                cb(er);
+                break;
+        }
+    });
+}</pre></li>
+    <li>example usage<pre class="apidocCodePre">n/a</pre></li>
+    </ul>
+
+
+
+    <h2>
+        <a href="#apidoc.element.mitm-proxy.mkdirp.mkdirP" id="apidoc.element.mitm-proxy.mkdirp.mkdirP">
+        function <span class="apidocSignatureSpan">mitm-proxy.mkdirp.</span>mkdirP
+        <span class="apidocSignatureSpan">(p, mode, f)</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">function mkdirP(p, mode, f) {
+    var cb = f || function () {};
+    if (typeof mode === &#x27;string&#x27;) mode = parseInt(mode, 8);
+    p = path.resolve(p);
+
+    fs.mkdir(p, mode, function (er) {
+        if (!er) return cb();
+        switch (er.code) {
+            case &#x27;ENOENT&#x27;:
+                mkdirP(path.dirname(p), mode, function (er) {
+                    if (er) cb(er);
+                    else mkdirP(p, mode, cb);
+                });
+                break;
+            case &#x27;EEXIST&#x27;:
+                fs.stat(p, function (er2, stat) {
+                    if (er2 || !stat.isDirectory()) cb(er)
+                    else if ((stat.mode &#x26; 0777) !== mode) fs.chmod(p, mode, cb);
+                    else cb();
+                });
+                break;
+            default:
+                cb(er);
+                break;
+        }
+    });
+}</pre></li>
+    <li>example usage<pre class="apidocCodePre">n/a</pre></li>
+    </ul>
+
+
+</div>
+
+<div class="apidocFooterDiv">
+    [ this document was created with
+    <a href="https://github.com/kaizhu256/node-utility2" target="_blank">utility2</a>
+    ]
+</div>
+</div>
